@@ -35,24 +35,24 @@ if __name__ == "__main__":
     n_sub = 2
     n_sup = 1
     n_wg = 4
+    bc_width = 2e-2
 
     TILDE = True
     SAMPLE_REAL = False
     num_samples = 300
 
-    ext = 0.6*2
-    ixt = -2
+    ext = 0.7
+    ixt = -3
     res = 120
     k_r = jnp.concat([
         kx/n_sup-jnp.logspace(ext, ixt, res), kx/n_sup+jnp.logspace(ixt, ext, res),
         kx/n_sub-jnp.logspace(ext, ixt, res), kx/n_sub+jnp.logspace(ixt, ext, res),
-        jnp.linspace(0, 6, 50)
     ])
 
     k_r = jnp.sort(jnp.concat([k_r, -k_r]))
 
     k_i = jnp.concat([
-        -jnp.logspace(ext, ixt, res), jnp.logspace(ixt, ext, res)
+        -jnp.logspace(ext, ixt, res), jnp.array([0]), jnp.logspace(ixt, ext, res)
     ])
 
     borders = [
@@ -61,8 +61,6 @@ if __name__ == "__main__":
         min(k_r)+ 1j*k_i,
         max(k_r)+ 1j*k_i,
     ]
-
-    #k_i = jnp.linspace(-20, 6, 60)
 
     if SAMPLE_REAL:
         downsample = len(k_r)//num_samples
@@ -73,7 +71,7 @@ if __name__ == "__main__":
     K_r, K_i = jnp.meshgrid(k_r, k_i)
 
     t_layer = jnp.linspace(0.02, 0.3, 9)
-    t_layer = jnp.linspace(0.2, 0.2, 1)
+    #t_layer = jnp.linspace(0.2, 0.2, 1)
     #t_layer = jnp.linspace(0.264, 0.272, 12)
 
     kx = jnp.ones_like(t_layer)*kx
@@ -98,16 +96,12 @@ if __name__ == "__main__":
     bcs = [-jnp.pi*3/2, -jnp.pi*5/4, -jnp.pi/2, jnp.pi/2, jnp.pi*3/2]
 
     bc_pairs = [
-        # [jnp.pi/2 * 1.8, jnp.pi/2 * 0.6],
-        # [jnp.pi/2 * 1.1, jnp.pi/2],
-        # [jnp.pi/2 * 1.0, jnp.pi/2],
-        # [jnp.pi/2 * 0.9, jnp.pi/2],
         [ -jnp.pi*3/2,-jnp.pi*3/2],
         [ jnp.pi/2,   -jnp.pi*3/2],
         [ -jnp.pi*3/2,   jnp.pi/2],
         [ jnp.pi/2,      jnp.pi/2]
     ]
-   # bcs = [-jnp.pi*3/2, jnp.pi/2]
+
     kt_cum = jnp.array([])
     tr_cum = jnp.array([])
     for i, bc_pair in enumerate(bc_pairs):
@@ -115,11 +109,13 @@ if __name__ == "__main__":
         settings = sax.get_settings(stack)
 
         settings = sax.update_settings(
-            settings, "if_0", bc_angle_i=bc_pair[0]
+            settings, "if_0", 
+            bc_angle_i=bc_pair[0], bc_width_i=bc_width
         )
 
         settings = sax.update_settings(
-            settings, f"if_{len(ds)}", bc_angle_j=bc_pair[1]
+            settings, f"if_{len(ds)}", 
+            bc_angle_j=bc_pair[1], bc_width_j=bc_width
         )
 
         smat_mesh = stack(**settings)
@@ -133,7 +129,7 @@ if __name__ == "__main__":
             branchpoints = [kx[idx]/n_sub, kx[idx]/n_sup]
             if n_sub == n_sup:
                 branchpoints=[kx[idx]/n_sub]
-            #plt.sca(ax)
+            plt.sca(ax)
             
             trans      = smat_mesh[('in', 'out')][idx]
             trans_real = smat_real[('in', 'out')][idx][0]
@@ -143,20 +139,33 @@ if __name__ == "__main__":
 
             K_tilde = tildify(k0_mesh, branchpoints, bcs=bc_pair) 
             k_r_tilde = tildify(k_r, branchpoints, bcs=bc_pair)
-
-            for k_border in borders:
-                k_tilde_border = tildify(
-                    k_border, branchpoints, 
-                    bcs=bc_pair, nan_tolerance=1e-1
-                )
-
-                plt.plot(
-                    k_tilde_border.real, 
-                    k_tilde_border.imag, 
-                    color="k", zorder=6
-                )
+            origin_tilde = tildify(0, branchpoints, bcs=bc_pair)
             
             if TILDE:
+                for k_border in borders:
+                    k_tilde_border = tildify(
+                        k_border, branchpoints, 
+                        bcs=bc_pair, nan_tolerance=1e-1
+                    )
+
+                    plt.plot(
+                        k_tilde_border.real, 
+                        k_tilde_border.imag, 
+                        color="gray", zorder=6
+                    )
+
+                plt.plot(
+                    k_r_tilde.real, 
+                    k_r_tilde.imag, 
+                    color="k", zorder=6
+                )
+
+                plt.scatter(
+                    origin_tilde.real,
+                    origin_tilde.imag,
+                    marker="o", facecolor="none", s=40,
+                    linewidth=1, edgecolor="k", zorder=6
+                )
                 if SAMPLE_REAL:
                     kt = k_r_tilde[::downsample]
                     tr = trans_real[::downsample]
@@ -191,7 +200,7 @@ if __name__ == "__main__":
                 # plt.pcolormesh(
                 #         K_tilde.real, K_tilde.imag, 
                 #         jnp.abs(trans), 
-                #         norm="log", 
+                #         norm="log", /home/jd/bin/mambaforge/envs/ag-surmof/bin/python /home/jd/phd/code/propagate_fp/examples/slab.py
                 #         vmax=1e2, 
                 #         vmin=1e-3
                 # )
@@ -214,14 +223,14 @@ if __name__ == "__main__":
             else: 
                 plt.pcolormesh(K_r, K_i, jnp.abs(trans), norm="log", vmin=1e-3, vmax=3)
             
-            if not TILDE and bc_pair[0] == jnp.pi/2 and bc_pair[0] == jnp.pi/2:
+            if not TILDE and bc_pair[1] == bc_pair[0] == jnp.pi/2:
                 plt.plot(k_r, jnp.abs(trans_real), "k")
             plt.grid()
             
-            color=f"C{i}"
+            # color=f"C{i}"
             # plt.scatter(z_n.real, z_n.imag, zorder=5, marker="x", color=color)
             # plt.scatter(kt.real, kt.imag, zorder=5, marker=".", color=color)
-
+        #plt.show(block=False)
     try:
         z_j, f_j, w_j, z_n = aaa(
             kt_cum, 
@@ -239,12 +248,15 @@ if __name__ == "__main__":
         ax.set_ylim([-ext_y, ext_y])
         ax.set_aspect(True)
 
-    if len(axs.flatten()) > 6:
-        if TILDE:
-            axs[1 ,0].set_ylabel(r"$\Im\{\tilde{k}\}$")
-            axs[-1,1].set_xlabel(r"$\Re\{\tilde{k}\}$")
-        else:
-            axs[1 ,0].set_ylabel(r"$\Im\{k\}$")
-            axs[-1,1].set_xlabel(r"$\Re\{k\}$")
-    plt.xticks([-3, -0.75, 0, 0.75, 3])
+
+    ax_idx = num//3//2
+    if axs.ndim == 1:
+        axs = axs[:, None]
+    if TILDE:
+        axs[ax_idx ,0].set_ylabel(r"$\Im\{\tilde{k}\}$")
+        axs[-1,ax_idx].set_xlabel(r"$\Re\{\tilde{k}\}$")
+    else:
+        axs[ax_idx ,0].set_ylabel(r"$\Im\{k\}$")
+        axs[-1,ax_idx].set_xlabel(r"$\Re\{k\}$")
+        plt.xticks([-3, 0, 3])
     plt.show()

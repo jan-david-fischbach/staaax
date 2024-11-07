@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 
-def angled_sqrt(x, bc_angle=jnp.pi, nan_tolerance=0.01*jnp.pi):
+def angled_sqrt(x, bc_angle=jnp.pi, nan_tolerance=0):
     arg = (bc_angle-jnp.pi)
     adjusted_angle = jnp.angle(x*jnp.exp(1j*arg))
 

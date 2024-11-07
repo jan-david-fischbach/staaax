@@ -4,11 +4,14 @@ from propagation import angled_sqrt
 def fresnel_kx_direct(
     ni=1, nj=1, k0=1, kx=0, pol="p", 
     bc_angle_i=jnp.pi/2, bc_angle_j=jnp.pi/2,
+    bc_width_i=0, bc_width_j=0,
     **kwargs
 ):
 
-    kiz = -angled_sqrt((k0*ni)**2 - kx**2 + 0j, bc_angle_i)
-    kjz = angled_sqrt((k0*nj)**2 - kx**2 + 0j, bc_angle_j)
+    kiz = -angled_sqrt((k0*ni)**2 - kx**2 + 0j, 
+                       bc_angle_i, nan_tolerance=bc_width_i)
+    kjz =  angled_sqrt((k0*nj)**2 - kx**2 + 0j, bc_angle_j, 
+                       nan_tolerance=bc_width_j)
 
     # print(f"{kiz=}; {kjz=}")
     if pol in ["s", "TE"]:
