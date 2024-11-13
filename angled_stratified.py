@@ -10,6 +10,7 @@ def stack_smat_kx(ds, ns, k0, kx, pol="s"):
         "prop": propagation_kx,
     }
     
+    i=-1
     for i in range(len(ds)):
         settings = dict(ni=ns[i], nj=ns[i+1], k0=k0, 
                         kx=kx, di=ds[i], pol=pol)
@@ -20,7 +21,7 @@ def stack_smat_kx(ds, ns, k0, kx, pol="s"):
         connections[f'if_{i},right'] = f'prop_{i},left'
         connections[f'prop_{i},right'] = f'if_{i+1},left'
 
-    settings = dict(ni=ns[i+1], nj=ns[i+2], k0=k0, kx=kx, pol=pol)
+    settings = dict(ni=ns[-2], nj=ns[-1], k0=k0, kx=kx, pol=pol)
     instances[f'if_{i+1}'] = {'component': "if", 'settings': settings}
     ports = {"in": "if_0,left", "out": f"if_{len(ds)},right"}
 

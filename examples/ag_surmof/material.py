@@ -1,9 +1,9 @@
 import numpy as np
-def eps_ag(wfreq):
+def eps_ag(wfreq, gamma_scaling=1):
     # Also for silver we have parameters from fitting.
     # These are from fp^2 / [f0^2 - f^2 - i f g] with normal frequencies in THz.
     Agw0 = 2*np.pi*134.39519365 / 300
-    Aggamma = 2*np.pi*10.61865288 / 300
+    Aggamma = 2*np.pi*10.61865288 / 300 * gamma_scaling
     Agwp = 2*np.pi*1867.27147966 / 300
 
     return 1 + Agwp**2 / (Agw0**2 - wfreq**2 - 1j*Aggamma*wfreq)

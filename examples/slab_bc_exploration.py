@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import jax.numpy as jnp
 import angled_stratified
 from diffaaable import aaa
-from examples import material
 from propagation import angled_sqrt
 from scipy.constants import c as c0
 import numpy as onp
@@ -71,6 +70,9 @@ if __name__ == "__main__":
     K_r, K_i = jnp.meshgrid(k_r, k_i)
 
     t_layer = jnp.linspace(0.02, 0.3, 9)
+    t_layer = jnp.linspace(0.2, 0.9, 9)
+    t_layer = jnp.linspace(0.63, 0.72, 9)
+    t_layer = jnp.linspace(0.686, 0.695, 9)
     #t_layer = jnp.linspace(0.2, 0.2, 1)
     #t_layer = jnp.linspace(0.264, 0.272, 12)
 
@@ -81,7 +83,7 @@ if __name__ == "__main__":
     kx = kx[:, None, None]
     t_layer = t_layer[:, None, None]
 
-    ns = [n_sub, n_wg+1e-4j, n_sup]
+    ns = [n_sub, n_wg+1e-2j, n_sup]
     ds = [t_layer]
     tildify_ns = [n_sub, n_sup]
 
