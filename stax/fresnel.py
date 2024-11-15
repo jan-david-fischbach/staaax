@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from propagation import angled_sqrt
+from stax.propagation import angled_sqrt
 
 def fresnel_kx_direct(
     ni=1, nj=1, k0=1, kx=0, pol="p", 

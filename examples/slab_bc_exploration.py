@@ -1,57 +1,30 @@
 import sys
+import warnings
 sys.path.append(".")
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
-import angled_stratified
+import stax.angled_stratified as angled_stratified
 from diffaaable import aaa
-from propagation import angled_sqrt
-from scipy.constants import c as c0
 import numpy as onp
 from numpy.linalg import LinAlgError
 import sax
+from tildify import tildify, inverse_tildify
 
-def tildify(k, Cs, bcs, nan_tolerance=0):
-    return 1/len(Cs)*jnp.sum(jnp.array([
-        angled_sqrt(
-            (jnp.squeeze(k)**2 - jnp.squeeze(C)**2), 
-            bc_angle=bc, 
-            nan_tolerance=nan_tolerance) for C, bc in zip(Cs, bcs)
-    ]), axis=0)
-
-# def tildify_kx(k, ns, kx, bcs):
-#     return 1/len(ns)*jnp.sum(jnp.array([
-#         angled_sqrt(
-#             ((jnp.squeeze(k)*n)**2 - jnp.squeeze(kx)**2), 
-#             bc_angle=bc, 
-#             nan_tolerance=0) for n, bc in zip(ns, bcs)
-#     ]), axis=0)
-
-if __name__ == "__main__":
-
-    pol = "s"
-    pol_idx = 1 if pol=="p" else 0
-    kx = 3
-    n_sub = 2
-    n_sup = 1
-    n_wg = 4
-    bc_width = 2e-2
-
-    TILDE = True
-    SAMPLE_REAL = False
-    num_samples = 300
-
-    ext = 0.7
-    ixt = -3
-    res = 120
-    k_r = jnp.concat([
-        kx/n_sup-jnp.logspace(ext, ixt, res), kx/n_sup+jnp.logspace(ixt, ext, res),
-        kx/n_sub-jnp.logspace(ext, ixt, res), kx/n_sub+jnp.logspace(ixt, ext, res),
-    ])
+def sample_k0_space(ext, ixt, res, branchpoints, num_samples_aaa):
+    k_r=jnp.array([])
+    for bp in branchpoints:
+        k_r = jnp.concat([
+            k_r,
+            bp-jnp.logspace(ext, ixt, res), 
+            bp+jnp.logspace(ixt, ext, res)
+        ])
 
     k_r = jnp.sort(jnp.concat([k_r, -k_r]))
 
     k_i = jnp.concat([
-        -jnp.logspace(ext, ixt, res), jnp.array([0]), jnp.logspace(ixt, ext, res)
+        -jnp.logspace(ext, ixt, res), 
+        jnp.array([0]), 
+        jnp.logspace(ixt, ext, res)
     ])
 
     borders = [
@@ -62,112 +35,225 @@ if __name__ == "__main__":
     ]
 
     if SAMPLE_REAL:
-        downsample = len(k_r)//num_samples
+        downsample = len(k_r)//num_samples_aaa
     else:
-        downsample = int(jnp.sqrt(len(k_r)*len(k_i)//num_samples))
-
+        downsample = int(jnp.sqrt(len(k_r)*len(k_i)//num_samples_aaa))
 
     K_r, K_i = jnp.meshgrid(k_r, k_i)
-
-    t_layer = jnp.linspace(0.02, 0.3, 9)
-    t_layer = jnp.linspace(0.2, 0.9, 9)
-    t_layer = jnp.linspace(0.63, 0.72, 9)
-    t_layer = jnp.linspace(0.686, 0.695, 9)
-    #t_layer = jnp.linspace(0.2, 0.2, 1)
-    #t_layer = jnp.linspace(0.264, 0.272, 12)
-
-    kx = jnp.ones_like(t_layer)*kx
     k0_mesh = K_r+ 1j*K_i
+    return k0_mesh, k_r, borders, downsample
 
-    k0_mesh = k0_mesh[None, :]
-    kx = kx[:, None, None]
-    t_layer = t_layer[:, None, None]
+def batch_with_k0(*args):
+    broadcastable_args = []
 
-    ns = [n_sub, n_wg+1e-2j, n_sup]
-    ds = [t_layer]
-    tildify_ns = [n_sub, n_sup]
+    size = 1
+    for i in range(len(args)):
+        arg = args[i]
+        try:
+            arr_arg = jnp.array(arg)
+            arr_arg = jnp.atleast_1d(arr_arg)
+        except ValueError:
+            raise ValueError("Inputs have to be convertible to (jax) numpy arrays")
+        if not jnp.ndim(arr_arg) == 1:
+            raise ValueError("*args inputs have to be 0D or 1D")
+            
+        curr_size = arr_arg.shape[0]
+        if curr_size != size and size==1:
+            size=curr_size
+        elif curr_size != size and curr_size != 1:
+            raise ValueError(f"detected multiple different sizes in batch dimension {curr_size} vs. {size}")
 
-    num = len(t_layer)
-    fig, axs = plt.subplots(min(3, num), int((num-0.1)//3+1), sharex=True, sharey=True)
-    if num==1:
-        axs = onp.array([axs])
-
-    bc = 0*jnp.pi
-    stack, info = angled_stratified.stack_smat_kx(ds, ns, k0_mesh, kx, pol=pol)
+    one = jnp.ones(size)  
+    for arg in args:
+        broadcastable_args.append((one*arg)[:, None, None])
     
-    bcs = [-jnp.pi*3/2, -jnp.pi*5/4, -jnp.pi/2, jnp.pi/2, jnp.pi*3/2]
+    return broadcastable_args
+
+def plot_tilde_coord_system(branchpoints, bc_pair, borders):
+    origin_tilde = tildify(0,  branchpoints, bcs=bc_pair)
+    plt.scatter(
+        origin_tilde.real,
+        origin_tilde.imag,
+        marker="o", facecolor="none", s=40,
+        linewidth=1, edgecolor="k", zorder=6
+    )
+    
+    for k_border in borders:
+        k_tilde_border = tildify(
+            k_border, branchpoints, 
+            bcs=bc_pair, nan_tolerance=1e-1
+        )
+
+        plt.plot(
+            k_tilde_border.real, 
+            k_tilde_border.imag, 
+            color="gray", zorder=6
+        )
+
+    plt.plot(
+        k_r_tilde.real, 
+        k_r_tilde.imag, 
+        color="k", zorder=6
+    )
+
+def plot_tilde_f(K_tilde, f):
+    plt.tripcolor(
+        K_tilde.real.flatten(), 
+        K_tilde.imag.flatten(), 
+        f.flatten(), 
+        norm="log", 
+        vmax=1e2, 
+        vmin=1e-3,
+        rasterized=True,
+    )
+
+def approximate_and_plot(z_k, f_k, aaa_tol, branchpoints, color="k"):
+    # Make sure no nan in f_k
+    filt = ~jnp.isnan(f_k)
+    z_k = z_k[filt]
+    f_k = f_k[filt]
+    
+    # Make sure no duplicates in k
+    z_k, indices = jnp.unique(z_k, return_index=True)
+    f_k = f_k[indices]
+    try:
+
+        z_j, f_j, w_j, z_n = aaa(
+            z_k, 
+            f_k, 
+            tol=aaa_tol
+        )
+        if TILDE and not PLOT_TILDE:
+            z_n = inverse_tildify(z_n, branchpoints)
+
+        plt.scatter(z_n.real, z_n.imag, zorder=5, marker="x", s=2, color=color)
+    except LinAlgError:
+        warnings.warn("Failed to find AAA-approximation")
+
+def get_branchpoints(kx, n_sub, n_sup):
+    branchpoints = [kx/n_sub, kx/n_sup]
+    if not jnp.any(n_sub - n_sup):
+        branchpoints=[kx/n_sub]
+    return branchpoints
+
+if __name__ == "__main__":
+    # ------------- Configuration ---------------------
+    TILDE = False#True
+    PLOT_TILDE = TILDE and True
+    SAMPLE_REAL = False
+
+    name = "batching_tester"
+    pol = "s"
+    pol_idx = 1 if pol=="p" else 0
+
+    kx = 3
+    t_layer = 0.3# jnp.linspace(0.1, 0.4, 3)
+    n_sub = 2#2
+    n_sup = 1
+    n_wg = 2# jnp.linspace(2, 4, 3)
+    bc_width = 2e-2
+    num_samples_aaa = 60
+
+    ext = 0.5
+    ixt = -2.6# -1.8
+    res = 80
+    aaa_tol = 1e-7
+
+    ext_x = 5 # for plotting
+    ext_y = 3
+
+    # ext_x = 6.5 # for plotting
+    # ext_y = 4
+
+    ns = [n_sub, n_wg, n_sup]
+    ds = [t_layer]
+
+    branchpoints = get_branchpoints(kx, ns[0], ns[-1])
+    k0_mesh, k_r, borders, downsample = sample_k0_space(
+        ext, ixt, res, branchpoints, num_samples_aaa
+    )
+
+    kx, *dns = batch_with_k0(kx, *ds, *ns)
+    ds, ns = dns[:len(ds)], dns[len(ds):]
+
+    k0_mesh = k0_mesh[None, :]   
 
     bc_pairs = [
-        [ -jnp.pi*3/2,-jnp.pi*3/2],
+        [ jnp.pi/2,      jnp.pi/2],
         [ jnp.pi/2,   -jnp.pi*3/2],
         [ -jnp.pi*3/2,   jnp.pi/2],
-        [ jnp.pi/2,      jnp.pi/2]
+        [ -jnp.pi*3/2,-jnp.pi*3/2],
     ]
+    
+    if not jnp.any(ns[0] - ns[-1]):
+        bc_pairs = [
+            [ jnp.pi/2],
+            [ -jnp.pi*3/2],
+        ]
 
-    kt_cum = jnp.array([])
-    tr_cum = jnp.array([])
+    stack, info = angled_stratified.stack_smat_kx(ds, ns, k0_mesh, kx, pol=pol)
+
+    # ------------- Plotting ---------------------
+
+    num = len(ns[0])
+    fig, axs = plt.subplots(
+        min(3, num), int((num-0.1)//3+1), 
+        sharex=True, sharey=True, figsize=(6, 4)
+    )
+    axs = onp.atleast_2d(onp.array(axs))
+
+    # ------------- Action --------------
+    kt_cum = [jnp.array([]) for idx in range(num)]
+    tr_cum = [jnp.array([]) for idx in range(num)]
+
     for i, bc_pair in enumerate(bc_pairs):
-        #plt.figure()
+        color=f"C{i}"
+        # ------- Set up brances ----------
         settings = sax.get_settings(stack)
-
         settings = sax.update_settings(
             settings, "if_0", 
             bc_angle_i=bc_pair[0], bc_width_i=bc_width
         )
-
         settings = sax.update_settings(
             settings, f"if_{len(ds)}", 
-            bc_angle_j=bc_pair[1], bc_width_j=bc_width
+            bc_angle_j=bc_pair[-1], bc_width_j=bc_width
         )
-
-        smat_mesh = stack(**settings)
-
-        settings = sax.update_settings(
+        settings_real = sax.update_settings(
             settings, k0=k_r
         )
-        smat_real = stack(**settings)
 
-        for idx, ax in enumerate(axs.flatten()):
-            branchpoints = [kx[idx]/n_sub, kx[idx]/n_sup]
-            if n_sub == n_sup:
-                branchpoints=[kx[idx]/n_sub]
+        # ------- Evaluate ----------
+        smat_mesh = stack(**settings)
+        smat_real = stack(**settings_real)
+        
+        trans_batch      = smat_mesh[('in', 'out')]
+        trans_real_batch = smat_real[('in', 'out')][:, 0]
+
+        for idx, ax in enumerate(axs.flatten()): 
+            # Go through batch dimension (e.g thickness or kx)
             plt.sca(ax)
-            
-            trans      = smat_mesh[('in', 'out')][idx]
-            trans_real = smat_real[('in', 'out')][idx][0]
-
-            # K_tilde =   tildify_kx(k0_mesh, tildify_ns, kx[idx], bcs=bc_pair) 
-            # k_r_tilde = tildify_kx(k_r, tildify_ns, kx[idx], bcs=bc_pair)
+            branchpoints = get_branchpoints(kx[idx], ns[0], ns[-1])
 
             K_tilde = tildify(k0_mesh, branchpoints, bcs=bc_pair) 
-            k_r_tilde = tildify(k_r, branchpoints, bcs=bc_pair)
-            origin_tilde = tildify(0, branchpoints, bcs=bc_pair)
-            
+            k_r_tilde = tildify(k_r,   branchpoints, bcs=bc_pair)
+
+            trans = trans_batch[idx]
+            trans_real = trans_real_batch[idx]
+
+            if PLOT_TILDE:
+                plot_tilde_coord_system(branchpoints, bc_pair, borders)
+                plot_tilde_f(K_tilde, jnp.abs(trans))
+
+            elif not i: 
+                plt.pcolormesh(
+                    jnp.squeeze(k0_mesh).real, 
+                    jnp.squeeze(k0_mesh).imag, 
+                    jnp.abs(trans), 
+                    norm="log", vmin=1e-3, vmax=20, rasterized=True
+                )
+                plt.plot(k_r, jnp.abs(trans_real), "k")
+
             if TILDE:
-                for k_border in borders:
-                    k_tilde_border = tildify(
-                        k_border, branchpoints, 
-                        bcs=bc_pair, nan_tolerance=1e-1
-                    )
-
-                    plt.plot(
-                        k_tilde_border.real, 
-                        k_tilde_border.imag, 
-                        color="gray", zorder=6
-                    )
-
-                plt.plot(
-                    k_r_tilde.real, 
-                    k_r_tilde.imag, 
-                    color="k", zorder=6
-                )
-
-                plt.scatter(
-                    origin_tilde.real,
-                    origin_tilde.imag,
-                    marker="o", facecolor="none", s=40,
-                    linewidth=1, edgecolor="k", zorder=6
-                )
                 if SAMPLE_REAL:
                     kt = k_r_tilde[::downsample]
                     tr = trans_real[::downsample]
@@ -180,85 +266,32 @@ if __name__ == "__main__":
                     tr = trans_real[::downsample]
                 else:
                     kt = k0_mesh[0, ::downsample, ::downsample].flatten()
-                    tr =   trans[::downsample, ::downsample].flatten()
-            
-            filt = ~jnp.isnan(tr)
-            kt = kt[filt]
-            tr = tr[filt]
+                    tr =      trans[::downsample, ::downsample].flatten()
 
-            kt_cum = jnp.concat([kt_cum, kt])
-            tr_cum = jnp.concat([tr_cum, tr])
+            #approximate_and_plot(kt, tr, aaa_tol, branchpoints, color)
 
-            try:
-                z_j, f_j, w_j, z_n = aaa(
-                    kt, 
-                    tr, 
-                    tol=1e-7
-                )
-            except LinAlgError:
-                z_n = jnp.zeros(0)
+            kt_cum[idx] = jnp.concat([kt_cum[idx], kt])
+            tr_cum[idx] = jnp.concat([tr_cum[idx], tr])  
 
-            if TILDE:
-                # plt.pcolormesh(
-                #         K_tilde.real, K_tilde.imag, 
-                #         jnp.abs(trans), 
-                #         norm="log", /home/jd/bin/mambaforge/envs/ag-surmof/bin/python /home/jd/phd/code/propagate_fp/examples/slab.py
-                #         vmax=1e2, 
-                #         vmin=1e-3
-                # )
+    for idx, ax in enumerate(axs.flatten()): 
+        plt.sca(ax)
+        branchpoints = get_branchpoints(kx[idx], n_sub, n_sup)
+        approximate_and_plot(kt_cum[idx], tr_cum[idx], aaa_tol, branchpoints)
 
-                plt.tripcolor(
-                        K_tilde.real.flatten(), 
-                        K_tilde.imag.flatten(), 
-                        jnp.abs(trans).flatten(), 
-                        norm="log", 
-                        vmax=1e2, 
-                        vmin=1e-3)
-                
-                # plt.scatter(
-                #         K_tilde.real.flatten(), K_tilde.imag.flatten(), 
-                #         c = jnp.abs(trans), 
-                #         norm="log", 
-                #         vmax=1e2, 
-                #         vmin=1e-3
-                # )
-            else: 
-                plt.pcolormesh(K_r, K_i, jnp.abs(trans), norm="log", vmin=1e-3, vmax=3)
-            
-            if not TILDE and bc_pair[1] == bc_pair[0] == jnp.pi/2:
-                plt.plot(k_r, jnp.abs(trans_real), "k")
-            plt.grid()
-            
-            # color=f"C{i}"
-            # plt.scatter(z_n.real, z_n.imag, zorder=5, marker="x", color=color)
-            # plt.scatter(kt.real, kt.imag, zorder=5, marker=".", color=color)
-        #plt.show(block=False)
-    try:
-        z_j, f_j, w_j, z_n = aaa(
-            kt_cum, 
-            tr_cum, 
-            tol=1e-7
-        )
-        plt.scatter(z_n.real, z_n.imag, zorder=5, marker="x", color="k")
-    except LinAlgError:
-        pass
-
+    # ----------------- Plot Formatting ------------------------
     for ax in axs.flatten():
-        ext_x = 5
-        ext_y = 4
         ax.set_xlim([-ext_x, ext_x])
         ax.set_ylim([-ext_y, ext_y])
         ax.set_aspect(True)
-
+        ax.grid()
 
     ax_idx = num//3//2
-    if axs.ndim == 1:
-        axs = axs[:, None]
-    if TILDE:
+
+    if PLOT_TILDE:
         axs[ax_idx ,0].set_ylabel(r"$\Im\{\tilde{k}\}$")
         axs[-1,ax_idx].set_xlabel(r"$\Re\{\tilde{k}\}$")
     else:
         axs[ax_idx ,0].set_ylabel(r"$\Im\{k\}$")
         axs[-1,ax_idx].set_xlabel(r"$\Re\{k\}$")
         plt.xticks([-3, 0, 3])
-    plt.show()
+    plt.savefig(f"out/{name}.pdf")

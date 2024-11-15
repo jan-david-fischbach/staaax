@@ -1,5 +1,5 @@
-from fresnel import fresnel_kx_direct
-from propagation import propagation_kx
+from stax.fresnel import fresnel_kx_direct
+from stax.propagation import propagation_kx
 import sax
 
 def stack_smat_kx(ds, ns, k0, kx, pol="s"):
