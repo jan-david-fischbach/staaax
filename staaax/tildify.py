@@ -1,15 +1,5 @@
-import sys
-sys.path.append(".")
-from stax.propagation import angled_sqrt
+from staaax.propagation import angled_sqrt
 import jax.numpy as jnp
-
-# def tildify_kx(k, ns, kx, bcs):
-#     return 1/len(ns)*jnp.sum(jnp.array([
-#         angled_sqrt(
-#             ((jnp.squeeze(k)*n)**2 - jnp.squeeze(kx)**2), 
-#             bc_angle=bc, 
-#             nan_tolerance=0) for n, bc in zip(ns, bcs)
-#     ]), axis=0)
 
 def tildify(k, Cs, bcs, nan_tolerance=0):
     return 1/len(Cs)*jnp.sum(jnp.array([

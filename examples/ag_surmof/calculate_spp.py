@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import numpy as onp
 from ag_surmof import f_to_k, k_to_f, k_to_wfreq, pcolormesh_k
 import matplotlib.pyplot as plt
-import stax.angled_stratified as angled_stratified
+import staaax.angled_stratified as angled_stratified
 import sax
 
 to_Hz = 300e12/(2*jnp.pi)

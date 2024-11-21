@@ -2,10 +2,10 @@ import sys
 sys.path.append(".")
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
-import stax.angled_stratified as angled_stratified
+import staaax.angled_stratified as angled_stratified
 from diffaaable import aaa
 import material
-from stax.propagation import angled_sqrt
+from staaax.propagation import angled_sqrt
 from scipy.constants import c as c0
 import sax
 

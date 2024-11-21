@@ -1,0 +1,12 @@
+[project]
+name = "staaax"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "diffaaable>=1.0.1",
+    "matplotlib>=3.9.2",
+    "sax>=0.14.1",
+    "scipy>=1.14.1",
+]
