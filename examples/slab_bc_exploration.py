@@ -69,7 +69,7 @@ def batch_with_k0(*args):
     
     return broadcastable_args
 
-def plot_tilde_coord_system(branchpoints, bc_pair, borders):
+def plot_tilde_coord_system(branchpoints, bc_pair, borders, k_r_tilde):
     origin_tilde = tildify(0,  branchpoints, bcs=bc_pair)
     plt.scatter(
         origin_tilde.real,
@@ -136,66 +136,44 @@ def get_branchpoints(kx, n_sub, n_sup):
         branchpoints=[kx/n_sub]
     return branchpoints
 
-if __name__ == "__main__":
-    # ------------- Configuration ---------------------
-    TILDE = False#True
-    PLOT_TILDE = TILDE and True
-    SAMPLE_REAL = False
+def get_branchcuts(ns):
+    if jnp.any(ns[0] - ns[-1]):
+        return [
+            [ jnp.pi/2,      jnp.pi/2],
+            [ jnp.pi/2,   -jnp.pi*3/2],
+            [ -jnp.pi*3/2,   jnp.pi/2],
+            [ -jnp.pi*3/2,-jnp.pi*3/2],
+        ]
+        
+    return [
+        [ jnp.pi/2],
+        [ -jnp.pi*3/2],
+    ]
 
-    name = "batching_tester"
-    pol = "s"
-    pol_idx = 1 if pol=="p" else 0
+def plot_batch(kx, ds, ns, pol, ext, ixt, res, num_samples_aaa):
+    n_sub, n_sup = ns[0], ns[-1]
 
-    kx = 3
-    t_layer = 0.3# jnp.linspace(0.1, 0.4, 3)
-    n_sub = 2#2
-    n_sup = 1
-    n_wg = 2# jnp.linspace(2, 4, 3)
-    bc_width = 2e-2
-    num_samples_aaa = 60
-
-    ext = 0.5
-    ixt = -2.6# -1.8
-    res = 80
-    aaa_tol = 1e-7
-
-    ext_x = 5 # for plotting
-    ext_y = 3
-
-    # ext_x = 6.5 # for plotting
-    # ext_y = 4
-
-    ns = [n_sub, n_wg, n_sup]
-    ds = [t_layer]
-
-    branchpoints = get_branchpoints(kx, ns[0], ns[-1])
+    branchpoints = get_branchpoints(kx, n_sub, n_sup)
     k0_mesh, k_r, borders, downsample = sample_k0_space(
         ext, ixt, res, branchpoints, num_samples_aaa
     )
 
+    bc_pairs = get_branchcuts(ns)
+
     kx, *dns = batch_with_k0(kx, *ds, *ns)
     ds, ns = dns[:len(ds)], dns[len(ds):]
+    n_sub, n_sup = [jnp.squeeze(ns[i], axis=(-1, -2)) for i in [0, -1]] # remove k0_batching
 
     k0_mesh = k0_mesh[None, :]   
-
-    bc_pairs = [
-        [ jnp.pi/2,      jnp.pi/2],
-        [ jnp.pi/2,   -jnp.pi*3/2],
-        [ -jnp.pi*3/2,   jnp.pi/2],
-        [ -jnp.pi*3/2,-jnp.pi*3/2],
-    ]
-    
-    if not jnp.any(ns[0] - ns[-1]):
-        bc_pairs = [
-            [ jnp.pi/2],
-            [ -jnp.pi*3/2],
-        ]
 
     stack, info = angled_stratified.stack_smat_kx(ds, ns, k0_mesh, kx, pol=pol)
 
     # ------------- Plotting ---------------------
 
-    num = len(ns[0])
+    num = len(ds[0])
+
+    print(f"batching dimension has size {num}")
+
     fig, axs = plt.subplots(
         min(3, num), int((num-0.1)//3+1), 
         sharex=True, sharey=True, figsize=(6, 4)
@@ -229,25 +207,25 @@ if __name__ == "__main__":
         trans_batch      = smat_mesh[('in', 'out')]
         trans_real_batch = smat_real[('in', 'out')][:, 0]
 
-        for idx, ax in enumerate(axs.flatten()): 
+        for idx in range(num): 
             # Go through batch dimension (e.g thickness or kx)
-            plt.sca(ax)
-            branchpoints = get_branchpoints(kx[idx], ns[0], ns[-1])
+            plt.sca(axs.flatten()[idx])
+            branchpoints = get_branchpoints(jnp.squeeze(kx[idx]), n_sub[idx], n_sup[idx])
 
-            K_tilde = tildify(k0_mesh, branchpoints, bcs=bc_pair) 
-            k_r_tilde = tildify(k_r,   branchpoints, bcs=bc_pair)
+            K_tilde = tildify(k0_mesh[idx], branchpoints, bcs=bc_pair) 
+            k_r_tilde = tildify(k_r, branchpoints, bcs=bc_pair)
 
             trans = trans_batch[idx]
             trans_real = trans_real_batch[idx]
 
             if PLOT_TILDE:
-                plot_tilde_coord_system(branchpoints, bc_pair, borders)
+                plot_tilde_coord_system(branchpoints, bc_pair, borders, k_r_tilde)
                 plot_tilde_f(K_tilde, jnp.abs(trans))
 
             elif not i: 
                 plt.pcolormesh(
-                    jnp.squeeze(k0_mesh).real, 
-                    jnp.squeeze(k0_mesh).imag, 
+                    k0_mesh[idx].real, 
+                    k0_mesh[idx].imag, 
                     jnp.abs(trans), 
                     norm="log", vmin=1e-3, vmax=20, rasterized=True
                 )
@@ -265,16 +243,16 @@ if __name__ == "__main__":
                     kt = k_r[::downsample]
                     tr = trans_real[::downsample]
                 else:
-                    kt = k0_mesh[0, ::downsample, ::downsample].flatten()
-                    tr =      trans[::downsample, ::downsample].flatten()
+                    kt = k0_mesh[idx, ::downsample, ::downsample].flatten()
+                    tr =        trans[::downsample, ::downsample].flatten()
 
             #approximate_and_plot(kt, tr, aaa_tol, branchpoints, color)
 
             kt_cum[idx] = jnp.concat([kt_cum[idx], kt])
             tr_cum[idx] = jnp.concat([tr_cum[idx], tr])  
 
-    for idx, ax in enumerate(axs.flatten()): 
-        plt.sca(ax)
+    for idx in range(num): 
+        plt.sca(axs.flatten()[idx])
         branchpoints = get_branchpoints(kx[idx], n_sub, n_sup)
         approximate_and_plot(kt_cum[idx], tr_cum[idx], aaa_tol, branchpoints)
 
@@ -295,3 +273,37 @@ if __name__ == "__main__":
         axs[-1,ax_idx].set_xlabel(r"$\Re\{k\}$")
         plt.xticks([-3, 0, 3])
     plt.savefig(f"out/{name}.pdf")
+
+if __name__ == "__main__":
+    # ------------- Configuration ---------------------
+    TILDE = True
+    PLOT_TILDE = TILDE and True
+    SAMPLE_REAL = False
+
+    name = "batching_tester"
+    pol = "s"
+    pol_idx = 1 if pol=="p" else 0
+
+    kx = 3
+    t_layer = jnp.linspace(4, 3, 8)
+    n_sub = 2#2
+    n_sup = 1
+    n_wg = jnp.linspace(3, 4, 8)
+    bc_width = 2e-2
+    num_samples_aaa = 60
+
+    ext = 0.5
+    ixt = -2.6# -1.8
+    res = 80
+    aaa_tol = 1e-7
+
+    ext_x = 5 # for plotting
+    ext_y = 3
+
+    # ext_x = 6.5 # for plotting
+    # ext_y = 4
+
+    ns = [n_sub, n_wg, n_sup]
+    ds = [t_layer]
+
+    plot_batch(kx, ds, ns, pol, ext, ixt, res, num_samples_aaa)
