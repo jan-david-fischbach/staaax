@@ -137,7 +137,7 @@ def approximate_and_plot(z_k, f_k, aaa_tol, branchpoints,
             z_k = inverse_tildify(z_k, branchpoints)
 
         plt.scatter(z_n.real, z_n.imag, zorder=5, marker="x", s=2, color=color)
-        plt.scatter(z_k.real, z_k.imag, zorder=5, marker=".", s=2, color="r")
+        #plt.scatter(z_k.real, z_k.imag, zorder=5, marker=".", s=2, color="r")
     except LinAlgError:
         warnings.warn("Failed to find AAA-approximation")
 
@@ -176,7 +176,7 @@ def create_batch(kx, ds, ns, ext, ixt, res, num_samples_aaa):
 
 def plot_batched(kx, ds, ns, pol, k0_mesh, downsample, 
                  tilde=True, plot_tilde=False, sample_real=False, bc_width=1e-2,
-                 aaa_tol=1e-7):
+                 aaa_tol=1e-7, figsize=(6, 4)):
     n_sub, n_sup = ns[0], ns[-1]
     branchpoints = get_branchpoints(kx, n_sub, n_sup)
     bc_pairs = get_branchcuts(ns)
@@ -191,7 +191,7 @@ def plot_batched(kx, ds, ns, pol, k0_mesh, downsample,
 
     fig, axs = plt.subplots(
         min(3, num), int((num-0.1)//3+1), 
-        sharex=True, sharey=True, figsize=(6, 4)
+        sharex=True, sharey=True, figsize=figsize
     )
     axs = onp.atleast_2d(onp.array(axs))
 
