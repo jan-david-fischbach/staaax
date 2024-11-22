@@ -134,8 +134,10 @@ def approximate_and_plot(z_k, f_k, aaa_tol, branchpoints,
         )
         if tilde and not plot_tilde:
             z_n = inverse_tildify(z_n, branchpoints)
+            z_k = inverse_tildify(z_k, branchpoints)
 
         plt.scatter(z_n.real, z_n.imag, zorder=5, marker="x", s=2, color=color)
+        plt.scatter(z_k.real, z_k.imag, zorder=5, marker=".", s=2, color="r")
     except LinAlgError:
         warnings.warn("Failed to find AAA-approximation")
 

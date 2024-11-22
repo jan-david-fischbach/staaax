@@ -18,17 +18,23 @@ def f_to_k(f):
 
 if __name__ == "__main__":
     to_Hz = 300e12/(2*jnp.pi)
-    f_domain=jnp.array([7.5-20j, 10.5-0.01j]) *to_Hz
-    f_domain=jnp.array([0-20j, 10.5-0.01j]) *to_Hz
+    f_domain_roi=jnp.array([7.5-20j, 10.5-0.01j]) *to_Hz
+    f_domain=jnp.array([1-0.6j, 10.5-0.01j]) *to_Hz
+
+    k_domain_roi=f_to_k(f_domain_roi)
     k_domain=f_to_k(f_domain)
 
     res = 100
-    k_r = jnp.linspace(min(k_domain.real), max(k_domain.real), 2*res)
-    k_i = -jnp.logspace(
-        jnp.log10(-min(k_domain.imag)), 
-        jnp.log10(-max(k_domain.imag)), 
-        res
-    )
+    k_r = jnp.concat([
+        jnp.linspace(min(k_domain.real), min(k_domain_roi.real)*0.995, res//4),
+        jnp.linspace(min(k_domain_roi.real), max(k_domain_roi.real), res)
+        ])
+    k_i = jnp.linspace(min(k_domain.imag), max(k_domain.imag), res)
+    # -jnp.logspace(
+    #     jnp.log10(-min(k_domain.imag)), 
+    #     jnp.log10(-max(k_domain.imag)), 
+    #     res
+    # )
 
     k_i = jnp.sort(jnp.concat([k_i, -k_i]))
     #jnp.linspace(min(k_domain.imag), max(k_domain.imag), res)
@@ -38,7 +44,7 @@ if __name__ == "__main__":
 
     pol = "p"
     t_mirror = 0.02e-6
-    kx = jnp.linspace(min(k_domain.real), max(k_domain.real)*1, 1)
+    kx = jnp.linspace(min(k_domain_roi.real)1.15, min(k_domain_roi.real)*1.2, 9)
     wfreq = k_to_wfreq(k0_mesh)
     
     #silver = angled_sqrt(material.eps_ag(wfreq), bc_angle=-jnp.pi)
@@ -53,5 +59,5 @@ if __name__ == "__main__":
     kx, *ds = batch_with_k0(kx, *ds)
     k0_mesh = k0_mesh[None, ...]
 
-    plot_batched(kx, ds, ns, pol, k0_mesh, 20, bc_width=0.02, plot_tilde=True)
+    plot_batched(kx, ds, ns, pol, k0_mesh, 15, bc_width=0.02, plot_tilde=False)
     plt.show()
