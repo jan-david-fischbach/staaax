@@ -8,6 +8,8 @@ from numpy.linalg import LinAlgError
 import sax
 from staaax.tildify import tildify, inverse_tildify
 
+USE_DET = False
+
 def mesh_with_branchpoints(ext, ixt, res, branchpoints, num_samples_aaa):
     k_r=jnp.array([])
     for bp in branchpoints:
@@ -216,9 +218,18 @@ def plot_batched(kx, ds, ns, pol, k0_mesh, downsample,
 
         # ------- Evaluate ----------
         smat_mesh = stack(**settings)
-        #smat_real = stack(**settings_real)
         
-        trans_batch      = smat_mesh[('in', 'out')]
+        trans_batch = smat_mesh[('in', 'out')]
+
+        if USE_DET:
+            smats = jnp.stack([ # TODO check stacking
+                jnp.stack([smat_mesh[('in', 'in')], smat_mesh[('out', 'in')]], axis=-1),
+                jnp.stack([smat_mesh[('in', 'out')], smat_mesh[('out', 'out')]], axis=-1),
+            ],axis=-1)
+
+            det_smat = jnp.linalg.det(smats)
+            trans_batch = det_smat
+
         #trans_real_batch = smat_real[('in', 'out')][:, 0]
 
         for idx in range(num): 
@@ -282,11 +293,11 @@ def plot_batched(kx, ds, ns, pol, k0_mesh, downsample,
     ax_idx = num//3//2
 
     if plot_tilde:
-        axs[ax_idx ,0].set_ylabel(r"$\Im\{\tilde{k}\}$")
-        axs[-1,ax_idx].set_xlabel(r"$\Re\{\tilde{k}\}$")
+        fig.supylabel(r"$\Im\{\tilde{k}\}$")
+        fig.supxlabel(r"$\Re\{\tilde{k}\}$")
     else:
-        axs[ax_idx ,0].set_ylabel(r"$\Im\{k\}$")
-        axs[-1,ax_idx].set_xlabel(r"$\Re\{k\}$")
+        fig.supylabel(r"$\Im\{k\}$")
+        fig.supxlabel(r"$\Re\{k\}$")
 
 if __name__ == "__main__":
     # ------------- Configuration ---------------------

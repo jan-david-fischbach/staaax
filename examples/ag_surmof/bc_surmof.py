@@ -1,4 +1,4 @@
-from staaax.slab_bc_exploration import plot_batched, batch_with_k0
+import staaax.slab_bc_exploration as stack
 
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     wfreq = k_to_wfreq(k0_mesh)
     
     #silver = angled_sqrt(material.eps_ag(wfreq), bc_angle=-jnp.pi)
-    silver = jnp.sqrt(material.eps_ag(wfreq))                        [None, :]
+    silver = jnp.sqrt(material.eps_ag(wfreq))                           [None, :]
     surmof = angled_sqrt(material.eps_cav(wfreq, 1), bc_angle=jnp.pi/2) [None, :]
 
     one = jnp.ones(1)[:, None, None]
@@ -57,10 +57,12 @@ if __name__ == "__main__":
     ns = [one, silver, surmof, silver, one]
     ds = [0.02e-6, 0.05e-6, 0.03e-6]
 
-    kx, *ds = batch_with_k0(kx, *ds)
+    kx, *ds = stack.batch_with_k0(kx, *ds)
     k0_mesh = k0_mesh[None, ...]
 
-    plot_batched(kx, ds, ns, pol, k0_mesh, 15, bc_width=0.08, plot_tilde=False, figsize=(20, 6))
+    stack.USE_DET = True
+    stack.plot_batched(kx, ds, ns, pol, k0_mesh, 15, bc_width=0.08, plot_tilde=False, figsize=(20, 6))
     plt.xlim(min(k_domain_roi.real), max(k_domain_roi.real))
     plt.ylim(min(k_domain_roi.imag), max(k_domain_roi.imag))
+    plt.title("$|\mathbf{S}(k)|$")
     plt.savefig("tmp/surmof.png")
