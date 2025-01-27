@@ -1,6 +1,6 @@
 import treams
+import numpy as np
 def stack_smat(ds, ns, k0, kx, poltype=None):
-    ns = [1] + ns + [1]
     pwb = treams.PlaneWaveBasisByComp([[kx, 0, 0],[kx, 0, 1]])
     stack = []
 

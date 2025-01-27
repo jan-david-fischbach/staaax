@@ -1,7 +1,11 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "staaax"
 version = "0.1.0"
-description = "Add your description here"
+description = "Jax based S-matrix stack solver."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -9,4 +13,5 @@ dependencies = [
     "matplotlib>=3.9.2",
     "sax>=0.14.1",
     "scipy>=1.14.1",
+    "treams>=0.4.5",
 ]

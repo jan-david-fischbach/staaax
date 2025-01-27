@@ -1,4 +1,4 @@
-import staaax.slab_bc_exploration as stack
+import slab_bc_exploration as stack
 
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
