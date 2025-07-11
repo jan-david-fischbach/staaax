@@ -1247,12 +1247,11 @@ wheels = [
 
 [[package]]
 name = "staaax"
-version = "0.2.2"
+version = "0.2.3"
 source = { editable = "." }
 dependencies = [
     { name = "diffaaable" },
     { name = "matplotlib" },
-    { name = "pytest" },
     { name = "sax" },
     { name = "scipy" },
     { name = "treams" },
@@ -1260,6 +1259,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pytest" },
     { name = "tbump" },
 ]
 
@@ -1267,14 +1267,16 @@ dev = [
 requires-dist = [
     { name = "diffaaable", specifier = ">=1.0.1" },
     { name = "matplotlib", specifier = ">=3.9.2" },
-    { name = "pytest", specifier = ">=8.4.1" },
     { name = "sax", specifier = ">=0.14.1" },
     { name = "scipy", specifier = ">=1.14.1" },
     { name = "treams", specifier = ">=0.4.5" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "tbump", specifier = ">=6.11.0" }]
+dev = [
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "tbump", specifier = ">=6.11.0" },
+]
 
 [[package]]
 name = "sympy"
