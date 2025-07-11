@@ -1,3 +1,3 @@
-# Staaax v0.2.1
+# Staaax v0.2.2
 
 A simple sax based stack solver
