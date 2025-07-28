@@ -1,4 +1,4 @@
-# Staaax v0.2.4
+# Staaax v1.0.0
 
 ![Logo](./docs/assets/logo2.svg)
 
