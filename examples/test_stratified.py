@@ -1,9 +1,6 @@
 import jax.numpy as jnp
-import staaax.angled_stratified
 import staaax.angled_stratified_treams
 import sax
-
-import pytest
 
 def test_integration():
     ns = [1, 2, 1.889+0.0035j, 1.802+0.0562j, 2.321+0.291j, 1.519+9j, 1]
@@ -17,11 +14,11 @@ def test_integration():
     pol = "p"
     pol_idx = 1 if pol=="p" else 0
 
-    smat_treams = staaax.angled_stratified_treams.stack_smat(
+    smat_treams = staaax.angled_stratified_treams.stratified_treams(
         ds, ns, k0=k0, kx=kx, poltype="parity"
     )
 
-    stack, info = staaax.angled_stratified.stack_smat_kx(
+    stack, info = staaax.stratified(
         ds, ns, k0, kx, pol=pol
     )
     smat_kx_direct = stack()

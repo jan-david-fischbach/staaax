@@ -2,7 +2,40 @@ from staaax.fresnel import fresnel_kx_direct
 from staaax.propagation import propagation_kx
 import sax
 
-def stack_smat_kx(ds, ns, k0, kx, pol="s"):
+def stratified(ds, ns, k0, kx, pol="s"):
+    """Sax Model Factory for stratified media.
+
+    .. svgbob::
+       :align: center
+
+                n0 ┊ n1 ┊           ┊ n_N+1
+       -> kz       ┊    ┊           ┊
+     |         inc ┊    ┊           ┊
+     V kx        \ ┊    ┊           ┊
+                  \┊    ┊           ┊
+                   +    ┊           ┊
+                  /┊\   ┊           ┊
+                 / ┊ \  ┊           ┊
+                /  ┊  \ ┊           ┊  
+               /   ┊   \┊           ┊ 
+              /    ┊    +         \ ┊
+             /     ┊   /┊\   ooo   \┊
+            /      ┊  / ┊ \         +
+           /       ┊ /  ┊          /┊\ 
+          /        ┊/   ┊         / ┊ \ 
+              
+
+    Args:
+        ds (List[float]): Thicknesses of the layers (`len(ds)=N`).
+        ns (List[complex]): Refractive indices of the layers 
+            (N+2 entries including halfspaces).
+        k0 (float): Vacuum (angular) Wavenumber
+        kx (float): Parallel component of the wavevector.
+        pol (str, optional): Polarization, either "s" or "p". Defaults to "p".
+
+    Returns:
+        tuple[SDictModel, CircuitInfo]: The sax model
+    """
     instances = {}
     connections = {}
     models = {

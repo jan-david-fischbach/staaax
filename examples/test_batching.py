@@ -1,6 +1,5 @@
 import jax.numpy as jnp
-import staaax.angled_stratified
-import staaax.angled_stratified_treams
+import staaax
 import jax
 
 def eval(k0, single=True):
@@ -13,7 +12,7 @@ def eval(k0, single=True):
     kx *= k0
     pol = "p"
 
-    stack, info = staaax.angled_stratified.stack_smat_kx(
+    stack, info = staaax.stratified(
         ds, ns, k0, kx, pol=pol
     )
     return stack()

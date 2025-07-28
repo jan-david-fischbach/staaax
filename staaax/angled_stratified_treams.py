@@ -1,6 +1,18 @@
 import treams
-import numpy as np
-def stack_smat(ds, ns, k0, kx, poltype=None):
+def stratified_treams(ds, ns, k0, kx, poltype=None):
+    """`treams` implementation of stratified media for reference.
+
+    Args:
+        ds (_type_): _description_
+        ns (_type_): _description_
+        k0 (_type_): _description_
+        kx (_type_): _description_
+        poltype (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
+
     pwb = treams.PlaneWaveBasisByComp([[kx, 0, 0],[kx, 0, 1]])
     stack = []
 

@@ -2,7 +2,7 @@ from staaax.propagation import angled_sqrt
 import jax.numpy as jnp
 
 def tildify(k, Cs, bcs, nan_tolerance=0, sign=1, normalize=False):
-    """ Transform to mitigate influence of square root type branch cuts. 
+    """ Coordinate transform to mitigate influence of square root type branch cuts. See also https://doi.org/10.1002/lpor.202500811
 
     Args:
         k (complex): coordinate in untransformed space
@@ -10,10 +10,12 @@ def tildify(k, Cs, bcs, nan_tolerance=0, sign=1, normalize=False):
         bcs (List[float]): Direction of the branchcuts (branch angles)
         nan_tolerance (int, optional): In this vicinity (in radian) to the branchcut the squareroot wil return nan. Defaults to 0.
         sign (int, optional): Used to flip the transform to allow for transforming kx instead of k0. Defaults to 1.
+        normalize (bool, optional): If True, the transform is normalized by the sum of the branchpoints else the number of branchpoints is used for normalization. Defaults to False.
 
     Returns:
         complex: transformed coordinate 
     """
+
     if len(bcs) != len(Cs):
         raise ValueError("Provide same number of branchpoints and branch angles")
     if normalize:
@@ -28,6 +30,21 @@ def tildify(k, Cs, bcs, nan_tolerance=0, sign=1, normalize=False):
     ]), axis=0)
 
 def inverse_tildify(k_tilde, branchpoints, sign=1, normalize=False, single_branch=False):
+    """Inverse coordinate transform corresponding to tildify.
+
+    Args:
+        k_tilde (complex): Transformed space coordinate
+        branchpoints (List[complex]): Branchpoints
+        sign (int, optional): As in tildify.
+        normalize (bool, optional): As in tildify. 
+        single_branch (bool, optional): Whether to return all possible branches, that could have lead to this coordinate in transformed space, or just a single one (False). Defaults to False.
+
+    Raises:
+        NotImplementedError: The inverse coordinate transform currently only supports 1 or 2 branchpoints.
+
+    Returns:
+        Complex: Untransformed space coordinate
+    """
     if len(branchpoints) > 2:
         raise NotImplementedError("Only 1 or 2 branchpoints are supported")
     

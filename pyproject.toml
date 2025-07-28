@@ -20,6 +20,10 @@ dependencies = [
 dev = [
     "tbump>=6.11.0",
     "pytest>=8.4.1",
+    "jupyter-book>=1.0.4.post1",
+    "sphinx-math-dollar>=1.2.1",
+    "jupytext>=1.17.2",
+    "sphinxcontrib-svgbob>=0.3.1",
 ]
 
 [tool.tbump.version]
