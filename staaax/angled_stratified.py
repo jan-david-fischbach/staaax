@@ -3,7 +3,7 @@ from staaax.propagation import propagation_kx
 import sax
 
 def stratified(ds, ns, k0, kx, pol="s"):
-    """Sax Model Factory for stratified media.
+    r"""Sax Model Factory for stratified media.
 
     .. svgbob::
        :align: center
@@ -68,3 +68,27 @@ def stratified(ds, ns, k0, kx, pol="s"):
         netlist = netlist,
         models = models,
     )
+
+def update_settings(settings, ds, ns, **kwargs):
+    """Convenience function to update the settings of a stratified model.
+    The number of layers cannot change.
+    Args:
+        settings (dict): Sax settings of the stack
+        ds: New thicknesses of the layers.
+        ns: New refractive indices of the layers.
+        **kwargs: Additional keyword arguments to pass to sax.update_settings.
+    """
+
+    N_layers = len([1 for key in settings.keys() if key.startswith('prop_')])
+
+    for i in range(N_layers):
+        settings[f'if_{i}']['ni'] = ns[i]
+        settings[f'if_{i}']['nj'] = ns[i+1]
+        settings[f'prop_{i}']['ni'] = ns[i+1]
+        settings[f'prop_{i}']['di'] = ds[i]
+
+    i+=1
+    settings[f'if_{i}']['ni'] = ns[i]
+    settings[f'if_{i}']['nj'] = ns[i+1]
+
+    return sax.update_settings(settings, **kwargs)
